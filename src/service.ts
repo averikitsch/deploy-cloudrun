@@ -149,11 +149,15 @@ export class Service {
       annotations,
       labels,
     };
+    const prevRevisionName = prevService.spec!.template!.metadata!.name;
+    const suffix = prevRevisionName!.split('-');
+    const num = (parseInt(suffix[0]) + 1).toString();
+    const newRevisionName = `${num.padStart(5, '0')}-${Math.random().toString(36).replace(/[^a-z]+/g, '').substring(0,3)}`;
+    this.request.spec!.template!.metadata!.name = newRevisionName;
 
-    // Merge Revision Spec
+    // Merge Container spec
     const prevContainer = prevService.spec!.template!.spec!.containers![0];
     const currentContainer = this.request.spec!.template!.spec!.containers![0];
-    // Merge Container spec
     const container = { ...prevContainer, ...currentContainer };
     // Merge Spec
     const spec = {
@@ -181,5 +185,8 @@ export class Service {
     container.env = env;
     spec.containers = [container];
     this.request.spec!.template!.spec = spec;
+
+    console.log(prevService)
+    console.log(this.request)
   }
 }
