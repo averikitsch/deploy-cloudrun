@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+import * as core from '@actions/core';
 import { run_v1 } from 'googleapis';
 import { get } from 'lodash';
 import fs from 'fs';
@@ -149,11 +150,23 @@ export class Service {
       annotations,
       labels,
     };
-
-    // Merge Revision Spec
+    const prevRevisionName = prevService.spec!.template!.metadata!.name;
+    let revisionName = this.name;
+    let num;
+    if (prevRevisionName) {
+      core.info(prevRevisionName);
+      const suffix = prevRevisionName!.split('-');
+      num = (parseInt(suffix[suffix.length - 2]) + 1).toString();
+    } else {
+      num = '1';
+    }
+    const newSuffix = `-${num.padStart(5, '0')}-${Math.random().toString(36).replace(/[^a-z]+/g, '').substring(0,3)}`;
+    this.request.spec!.template!.metadata!.name = revisionName + newSuffix;
+    core.info(this.request.spec!.template!.metadata!.name)
+    
+    // Merge Container spec
     const prevContainer = prevService.spec!.template!.spec!.containers![0];
     const currentContainer = this.request.spec!.template!.spec!.containers![0];
-    // Merge Container spec
     const container = { ...prevContainer, ...currentContainer };
     // Merge Spec
     const spec = {
@@ -181,5 +194,7 @@ export class Service {
     container.env = env;
     spec.containers = [container];
     this.request.spec!.template!.spec = spec;
+    core.info(JSON.stringify(prevService, null, 4))
+    core.info(JSON.stringify(this.request, null, 4))
   }
 }

@@ -1,0 +1,30 @@
+name: TEST
+
+on:
+  push:
+    branches: 
+    - example-test
+
+jobs:
+  envvars:
+    name: TEST
+    runs-on: ubuntu-latest
+    steps:
+    - id: service
+      run: echo ::set-output name=service::run-rev-test
+    - uses: actions/checkout@v2
+    - uses: actions/setup-node@master
+      with:
+        node-version: 12.x
+    - name: Build Javascript
+      run: |-
+        npm install
+        npm run build
+    - name: Create Service with one env var
+      id: deploy_1
+      uses: ./
+      with:
+        credentials: ${{ secrets.GCP_SA_KEY }}
+        image: gcr.io/cloudrun/hello
+        service: ${{ steps.service.outputs.service }}
+

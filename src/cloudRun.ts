@@ -59,6 +59,8 @@ export class CloudRun {
   private authClient: JWT | Compute | UserRefreshClient | undefined;
   readonly parent: string;
   readonly endpoint: string;
+  readonly projectId: string;
+  readonly region: string;
 
   constructor(region: string, opts?: ClientOptions) {
     let projectId = opts?.projectId;
@@ -101,6 +103,8 @@ export class CloudRun {
     // this.parent = `projects/${projectId}/locations/${region}`;
     this.parent = `namespaces/${projectId}`;
     this.endpoint = `https://${region}-run.googleapis.com`;
+    this.projectId = projectId || "test";
+    this.region = region;
     this.methodOptions = { rootUrl: this.endpoint };
   }
 
@@ -196,14 +200,20 @@ export class CloudRun {
       service.merge(prevService);
       core.info('Creating a service revision...');
       // Replace service
-      const createServiceRequest: run_v1.Params$Resource$Namespaces$Services$Replaceservice = {
-        name: this.getResource(service.name),
+      const createServiceRequest: run_v1.Params$Resource$Projects$Locations$Services$Replaceservice = {
+        name: `projects/${this.projectId}/locations/${this.region}/services/${service.name}`,
         auth: authClient,
-        requestBody: service.request,
-      };
-      serviceResponse = await this.run.namespaces.services.replaceService(
+        requestBody: service.request
+      }
+      // const createServiceRequest: run_v1.Params$Resource$Namespaces$Services$Replaceservice = {
+      //   name: this.getResource(service.name),
+      //   auth: authClient,
+      //   requestBody: service.request,
+      // };
+      // serviceResponse = await this.run.namespaces.services.replaceService(
+        serviceResponse = await this.run.projects.locations.services.replaceService(
         createServiceRequest,
-        this.methodOptions,
+        // this.methodOptions,
       );
     } else {
       core.info('Creating a new service...');
