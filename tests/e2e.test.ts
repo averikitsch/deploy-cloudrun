@@ -22,6 +22,10 @@ import * as _ from 'lodash';
 import 'mocha';
 import { run_v1 } from 'googleapis';
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 describe('E2E tests', function() {
   const {
     PARAMS,
@@ -128,6 +132,7 @@ describe('E2E tests', function() {
   it('has the correct revision count', async function() {
     if (COUNT && SERVICE) {
       const revisions = await client.listRevisions();
+      console.log(revisions.toString());
       const filtered = revisions.filter((name) => name.includes(SERVICE));
       expect(filtered.length).to.equal(parseInt(COUNT));
     }
