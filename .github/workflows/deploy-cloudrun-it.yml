@@ -2,16 +2,17 @@ name: deploy-cloudrun Integration
 
 on:
   push:
-    branches: 
+    branches:
     - 'main'
   pull_request:
 
 jobs:
   envvars:
     name: with Env Vars
-    if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name }}
+    # if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name }}
     runs-on: ubuntu-latest
     steps:
+    - run: echo ${{ github.event_name }}; echo ${{ github.repository }}; echo ${{ github.event.pull_request.head.repo.full_name }}
     - id: service
       run: echo ::set-output name=service::run-envvars-$GITHUB_SHA
     - uses: actions/checkout@v2
@@ -113,7 +114,7 @@ jobs:
       run: |-
         npm install
         npm run build
-    
+
     - run: |-
         sed -i "s/run-full-yaml/${{ steps.service.outputs.service }}/" ./tests/unit/service.full.yaml
 
@@ -193,7 +194,7 @@ jobs:
       env:
         URL: ${{ steps.deploy_1.outputs.url }}
         REVISION: ${{ steps.service.outputs.service }}-001
-    
+
     - run: |-
         sed -i "s/-001/-002/" ./tests/unit/service.namedrevision.yaml
 
@@ -211,7 +212,7 @@ jobs:
         SERVICE: ${{ steps.service.outputs.service }}
         REVISION: ${{ steps.service.outputs.service }}-002
         COUNT: 2
-  
+
   name:
     name: with Bad Inputs
     if: ${{ github.event_name == 'push' || github.repository == github.event.pull_request.head.repo.full_name }}
@@ -323,3 +324,5 @@ jobs:
         gcloud run services delete run-envvars-$GITHUB_SHA --quiet
         gcloud run services delete run-revision-name-$GITHUB_SHA --quiet
         gcloud run services delete test-service-name --quiet
+
+        
