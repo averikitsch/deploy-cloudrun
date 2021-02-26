@@ -21,7 +21,7 @@ jobs:
     - name: Build Javascript
       run: |-
         npm install
-        npm run build
+    #     npm run build
 
     - name: Create Service with one env var
       id: deploy_1
@@ -76,9 +76,10 @@ jobs:
     - name: Build Javascript
       run: |-
         npm install
-        npm run build
+        # npm run build
 
-    - run: sed -i "s/test-basic-yaml/${{ steps.service.outputs.service }}/" ./tests/unit/service.basic.yaml
+    - name: Set service name in metadata YAML
+      run: sed -i "s/test-basic-yaml/${{ steps.service.outputs.service }}/" ./tests/unit/service.basic.yaml
 
     - name: Deploy Service
       id: deploy
@@ -112,9 +113,10 @@ jobs:
     - name: Build Javascript
       run: |-
         npm install
-        npm run build
+    #     npm run build
 
-    - run: |-
+    - name: Set service name in metadata YAML
+      run: |-
         sed -i "s/run-full-yaml/${{ steps.service.outputs.service }}/" ./tests/unit/service.full.yaml
 
     - name: Create service from metadata yaml
@@ -143,7 +145,7 @@ jobs:
       uses: ./
       with:
         credentials: ${{ secrets.DEPLOY_CLOUDRUN_SA_KEY_JSON }}
-        image: gcr.io/cloudrun/hello
+        image: gcr.io/cloudrun/hello:latest
         service: ${{ steps.service.outputs.service }}
 
     - name: Integration Tests # Check that config isn't overwritten
@@ -170,9 +172,10 @@ jobs:
     - name: Build Javascript
       run: |-
         npm install
-        npm run build
+    #     npm run build
 
-    - run: |-
+    - name: Set service name in metadata YAML
+      run: |-
         sed -i "s/run-revision-name/${{ steps.service.outputs.service }}/" ./tests/unit/service.namedrevision.yaml
 
     - name: Create service from metadata yaml
@@ -194,7 +197,8 @@ jobs:
         URL: ${{ steps.deploy_1.outputs.url }}
         REVISION: ${{ steps.service.outputs.service }}-001
 
-    - run: |-
+    - name: Update service revision name
+      run: |-
         sed -i "s/-001/-002/" ./tests/unit/service.namedrevision.yaml
 
     - name: Update service with new revision name
@@ -228,7 +232,7 @@ jobs:
     - name: Build Javascript
       run: |-
         npm install
-        npm run build
+    #     npm run build
 
     - name: Name with uppercase letters
       id: test1
