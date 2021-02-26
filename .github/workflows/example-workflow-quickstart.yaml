@@ -23,15 +23,51 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-        
-    - name: Deploy to Cloud Run
-      id: deploy
-      uses: google-github-actions/deploy-cloudrun@v0.2.0
+    - uses: actions/checkout@v2
+    # - name: setup
+    #   uses: google-github-actions/setup-gcloud@master
+    #   with:
+    #     credentials: ${{ secrets.GCP_SA_KEY }}
+    # - run: gcloud components install beta --quiet
+
+    - name: Deploy from source
+      id: test1
+      uses: ./
       with:
+        service: source
+        source: example-app
+        credentials: ${{ secrets.GCP_SA_KEY }}
+    - run: echo ${{ steps.test1.outputs.url }}
+
+    - name: tag and revision name
+      id: test2
+      uses: ./
+      with:
+        credentials: ${{ secrets.GCP_SA_KEY }}
         image: gcr.io/cloudrun/hello
         service: hello-cloud-run
-        credentials: ${{ secrets.GCP_SA_KEY }}
+        tag: prod
+        suffix: v9
+    - run: echo ${{ steps.test2.outputs.url }}
 
-    - name: Show Output
-      run: echo ${{ steps.deploy.outputs.url }}
-      
+    - name: update traffic
+      id: test3
+      uses: ./
+      with:
+        credentials: ${{ secrets.GCP_SA_KEY }}
+        service: hello-cloud-run
+        revision_traffic: hello-cloud-run-v9=10
+    - run: echo ${{ steps.test3.outputs.url }}
+
+    - name: deploy with metadata
+      id: test4
+      uses: ./
+      with:
+        credentials: ${{ secrets.GCP_SA_KEY }}
+        metadata: ./tests/unit/service.basic.yaml
+    - run: echo ${{ steps.test4.outputs.url }}
+
+    # - name:
+    #   uses: ./
+    #   with:
+    #     credentials: ${{ secrets.GCP_SA_KEY }}
