@@ -60,6 +60,41 @@ inputs:
       setup-gcloud action with exported credentials.
     required: false
 
+  source:
+    description: |-
+      .
+    required: false
+
+  suffix:
+    description: |-
+      .
+    required: false
+
+  tag:
+    description: |-
+      .
+    required: false
+
+  no-traffic:
+    description: |-
+      .
+    required: false
+
+  revision_traffic:
+    description: |-
+      .
+    required: false
+
+  tag_traffic:
+    description: |-
+      .
+    required: false
+
+  flags:
+    description: |-
+      .
+    required: false
+
 outputs:
   url:
     description: The URL of your Cloud Run service
