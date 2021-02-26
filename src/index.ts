@@ -15,8 +15,10 @@
  */
 
 import * as core from '@actions/core';
-import { CloudRun } from './cloudRun';
-import { Service } from './service';
+// import { CloudRun } from './cloudRun';
+// import { Service } from './service';
+import * as exec from '@actions/exec';
+import * as setupGcloud from 'setup-google-cloud-sdk';
 
 /**
  * Executes the main action. It includes the main business logic and is the
@@ -25,28 +27,176 @@ import { Service } from './service';
 async function run(): Promise<void> {
   try {
     // Get inputs
-    const image = core.getInput('image');
-    const name = core.getInput('service');
-    const envVars = core.getInput('env_vars');
-    const yaml = core.getInput('metadata');
-    const credentials = core.getInput('credentials');
-    const projectId = core.getInput('project_id');
+    const image = core.getInput('image'); // Image ie gcr.io/...
+    const name = core.getInput('service'); // Service name
+    const envVars = core.getInput('env_vars'); // String of env vars KEY=VALUE,...
+    const metadata = core.getInput('metadata'); // YAML file
+    const credentials = core.getInput('credentials'); // Service account key
+    let projectId = core.getInput('project_id');
     const region = core.getInput('region') || 'us-central1';
+    const source = core.getInput('source'); // Source directory
+    const suffix = core.getInput('suffix');
+    const tag = core.getInput('tag');
+    const noTraffic =
+      core.getInput('no_traffic').toLowerCase() == 'true' ? true : false;
+    const revTraffic = core.getInput('revision_traffic');
+    const tagTraffic = core.getInput('tag_traffic');
+    const flags = core.getInput('flags');
 
-    // Create Cloud Run client
-    const client = new CloudRun(region, { projectId, credentials });
+    let installBeta = false;
+    let cmd;
+    if (revTraffic && tagTraffic) {
+      throw new Error(
+        'Both `revision_traffic` and `tag_traffic` inputs set - Please select one.',
+      );
+    }
+    if ((revTraffic || tagTraffic) && !name) {
+      throw new Error('No service name set.');
+    }
+    if (revTraffic || tagTraffic) {
+      // Update traffic
+      cmd = [
+        'beta',
+        'run',
+        'services',
+        'update-traffic',
+        name,
+        '--platform',
+        'managed',
+        '--region',
+        region,
+      ];
+      installBeta = true;
+      if (revTraffic) cmd.push('--to-revisions', revTraffic);
+      if (tagTraffic) cmd.push('--to-tags', tagTraffic);
+    } else if (source) {
+      // Deploy from source
+      cmd = [
+        'beta',
+        'run',
+        'deploy',
+        name,
+        '--quiet',
+        '--platform',
+        'managed',
+        '--region',
+        region,
+        '--source',
+        source,
+      ];
+      installBeta = true;
+    } else if (metadata) {
+      // Deploy metadata
+      if (image || name || envVars) {
+        core.warning(
+          'Metadata YAML provided: ignoring `image`, `service`, and `env_vars` inputs.',
+        );
+      }
+      cmd = [
+        'beta',
+        'run',
+        'services',
+        'replace',
+        metadata,
+        '--platform',
+        'managed',
+        '--region',
+        region,
+      ];
+    } else {
+      // Deploy with image specified
+      cmd = [
+        'run',
+        'deploy',
+        name,
+        '--image',
+        image,
+        '--quiet',
+        '--platform',
+        'managed',
+        '--region',
+        region,
+      ];
+    }
+    if (!metadata) {
+      // Set optional flags from inputs
+      if (envVars) cmd.push('--update-env-vars', envVars);
+      if (tag) {
+        cmd.push('--tag', tag);
+        cmd.unshift('beta');
+        installBeta = true;
+      }
+      if (suffix) cmd.push('--revision-suffix', suffix);
+      if (noTraffic) cmd.push('--no-traffic');
+    }
+    // Add optional flags
+    if (flags) cmd.push(flags);
 
-    // Initialize service
-    const service = new Service({ image, name, envVars, yaml });
+    // Install gcloud if not already installed.
+    if (!setupGcloud.isInstalled()) {
+      const gcloudVersion = await setupGcloud.getLatestGcloudSDKVersion();
+      await setupGcloud.installGcloudSDK(gcloudVersion);
+    }
 
-    // Deploy service
-    const url = await client.deploy(service);
+    // Fail if no Project Id is provided if not already set.
+    const projectIdSet = await setupGcloud.isProjectIdSet();
+    if (!projectIdSet && projectId === '' && credentials === '') {
+      core.setFailed('No project Id provided.');
+    }
 
-    // Set URL as output
-    core.setOutput('url', url);
+    // Authenticate gcloud SDK.
+    if (credentials) {
+      await setupGcloud.authenticateGcloudSDK(credentials);
+      // Set and retrieve Project Id if not provided
+      if (projectId === '') {
+        projectId = await setupGcloud.setProjectWithKey(credentials);
+      }
+    }
+    const authenticated = await setupGcloud.isAuthenticated();
+    if (!authenticated) {
+      core.setFailed('Error authenticating the Cloud SDK.');
+    }
+    // Install beta components if needed
+    if (installBeta) await setupGcloud.installComponent('beta');
+
+    const toolCommand = setupGcloud.getToolCommand();
+
+    // Get output of gcloud cmd.
+    let output = '';
+    const stdout = (data: Buffer): void => {
+      output += data.toString();
+    };
+    const stderr = (data: Buffer): void => {
+      output += data.toString();
+    };
+
+    const options = {
+      listeners: {
+        stderr,
+        stdout
+      },
+    };
+
+    // Run gcloud cmd.
+    await exec.exec(toolCommand, cmd, options);
+
+    // Set url as output.
+    setUrlOutput(output);
   } catch (error) {
     core.setFailed(error.message);
   }
+}
+
+function setUrlOutput(output: string): void {
+  const urlMatch = output.match(
+    /https:\/\/(www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.app/g,
+  );
+  if (!urlMatch) {
+    core.warning('Can not find URL.')
+    return;
+  };
+  const url = (urlMatch!.length > 1) ? urlMatch![1] : urlMatch![0];
+  core.setOutput('url', url);
 }
 
 run();
