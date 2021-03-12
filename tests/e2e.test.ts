@@ -56,7 +56,7 @@ describe('E2E tests', function () {
           stdout,
         },
       };
-      let cmd = [
+let cmd = [
         'run',
         'services',
         'describe',
@@ -68,6 +68,7 @@ describe('E2E tests', function () {
         '--region',
         'us-central1',
       ];
+
       await exec.exec(toolCommand, cmd, options);
       service = yaml.load(output) as run_v1.Schema$Service;
       if (!service) console.log('no service found');

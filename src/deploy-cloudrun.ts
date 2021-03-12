@@ -169,9 +169,11 @@ export async function run(): Promise<void> {
     const stdout = (data: Buffer): void => {
       output += data.toString();
     };
+
     let errOutput = '';
     const stderr = (data: Buffer): void => {
       errOutput += data.toString();
+
     };
 
     const options = {
@@ -183,7 +185,7 @@ export async function run(): Promise<void> {
     };
 
     // Run gcloud cmd.
-    try {
+try {
       await exec.exec(toolCommand, cmd, options);
     } catch (error) {
       if (errOutput) {
@@ -192,6 +194,7 @@ export async function run(): Promise<void> {
         throw new Error(error);
       }
     }
+
 
     // Set url as output.
     setUrlOutput(output);

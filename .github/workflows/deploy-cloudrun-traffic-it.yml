@@ -31,6 +31,7 @@ jobs:
         service: ${{ steps.service.outputs.service }}
         source: example-app
 
+
     - name: Setup Authentication with gcloud
       uses: google-github-actions/setup-gcloud@master
       with:
